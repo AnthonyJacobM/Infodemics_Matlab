@@ -1,32 +1,104 @@
+%%
 params = struct('chi',0.048,'chi_hat',0.37,...
                 'epsilon',0.33,'mu',0.1,...
                 'chi_bar',0.0048,'gam',0.07,'delta',0.90,...
                 'r',1.635,'s',1,'f',0);
 
+params_default = params;
+
 default_dfe_ics = [ 0.175, 0.375, 0.09, 0.125, 0.4 ]; % mu = 1e-6
 default_sf_ics = [ 0.125, 0.4, 0.11, 0.25, 0.1 ]; % mu = 0.25
 default_lc_ics = [ 0.225, 0.475, 0.085, 0.125, 0.0 ]; % mu = 0.066
+default_r_bp_ss = [ 0.000571591255633368, 0.189492234608488, 0.197046892184315, 0.604330828414679, 1 ];
+NS_mu_eta_1_ss = [ 0.0591350804603277, 0.726167095677473, 0.0553507312626473, 4.44519781396271e-24, -9.88131291682493e-324 ];
+NS_mu_eta_2_ss = [0.3399, 0.5848, 0.0227, 1e-6, 1e-6];
+
+mu_NS_mu_eta_1 = 0.23795641826987;
+mu_NS_mu_eta_2 = 0.0160574291788838;
+
+eta_NS_mu_eta_1 = 0.909373165865631;
+eta_NS_mu_eta_2 = 0.372867459305354;
+
+r_bp = 0.340219853189614; r_hopf = 1.635;
 
 y0 = [0.9 0.05 0.02 0.01 0.02];     % initial conditions
 yss = [0.85 0.06 0.03 0.02 0.04 0.01]; % example - steady state vector
 t = linspace(0,10000,10001);
 
-% Fig2F:
+%% Fig2C:
+params = params_default;
+params.mu = 1e-6;
+y0 = default_dfe_ics;yss = [ 0.341306089623631, 0.275416966101144, 0, 0.383276944275225, 0 ]; % mu = 1e-6
+version = 'B';
+
+%% Fig2F:
+params = params_default;
 params.mu = 0.25;
 y0 = default_sf_ics;
-% Fig2C:
-params.mu = 1e-6;
-y0 = default_dfe_ics;
-% Fig2I:
+yss = [ 0.0835784742933273, 0.417846388379996, 0.13692599340057, 0.188788486675675, 0.000641150687453772 ]; % mu = 0.25
+version = 'B';
+
+%% Fig2I:
+params = params_default;
 params.mu = 0.066;
 y0 = default_lc_ics;
-yss = [ 0.0835784742933273, 0.417846388379996, 0.13692599340057, 0.188788486675675, 0.000641150687453772 ]; % mu = 0.25
-yss = [ 0.341306089623631, 0.275416966101144, 0, 0.383276944275225, 0 ]; % mu = 1e-6
 yss = [ 0.241136377556403, 0.533230964751255, 0.0724586272033277, 0.00361909512384761, 0 ]; % mu = 0.066
-plot_nullclines2(y0, params, t, yss, 'B');
+version = 'A';
+
+%% Fig3C: 
+params = params_default;
+params.r = r_bp;
+y0 = default_r_bp_ss + rand(1, 5) * 1e-5;
+y0(5) = 1 - 0.01 * rand(1);
+version = 'C';
+
+%% Fig3F:
+params = params_default;
+params.r = r_hopf; params.mu = 0.066; params.eta = 0.4438;
+y0 = default_r_bp_ss - rand(1,5) * 1e-4;
+version = 'A';
+
+%% Fig3I:
+params = params_default;
+params.r = 0.0908; params.mu = 0.066; params.epsilon = 0.9033;
+%y0 = default_lc_ics; y0(5) = 0.1 * rand(1);
+%y0 = [0.08, 0.34, 0.01, 0.56, 1e-3];
+version = 'B';
+
+%% Fig4E:
+yss = [ 0.311120209501733, 0.550549723309263, 0.0442884657076239, -1.05780180778874e-26, -1.13729280495796e-29 ];
+y0 = yss - rand(1, 5) * 0.01;
+%y0 = [0.4, 0.55, 0.001, 0.001, 1e-5];
+y0(4) = 0.01 * rand(1); y0(5) = 0.001 * rand(1);
+params = params_default;
+params.r = 1.635; params.mu = 0.0300788; params.epsilon = 0.33;
+version = 'A'; % version = 'B' for Fig4F
 
 
 
+%yss = [0.1943, 0.4576, 0.0722, 0.1659, 0.0076];
+%yss = mean(yL); % Run Infodemics_ODE_Sys
+%y0 = yss + rand(1, 5) * 0.001;
+
+%%
+params.mu = 0.25;
+y0 = default_sf_ics;
+yss = [ 0.0835784742933273, 0.417846388379996, 0.13692599340057, 0.188788486675675, 0.000641150687453772 ]; % mu = 0.25
+
+%%
+% Fig6 E-F (r bifurcation)
+yss_r_NS = [0.0209, 0.2106, 0.0751, 0.6803, 0.0118];
+yss = yss_r_NS;
+params = params_default;
+params.r = 0.1296; params.mu = 0.10; params.epsilon = 0.33;
+
+yss_r_H = [0.1653, 0.4608, 0.0907, 0.1419, 0.0004];
+yss = yss_r_H;
+params = params_default;
+params.r = 1.6353;
+
+%%
+plot_nullclines2(y0, params, t, yss, 'A');
 
 function plot_nullclines2(y0, params, t, yss, option)
 % plot_nullclines(y0, params, t, yss, option)
@@ -41,7 +113,7 @@ function plot_nullclines2(y0, params, t, yss, option)
 %   option : 'A', 'B', or 'C' to select variable pair
 %
 % Author: Anthony
-% Date: <Date>
+% Date: 10/18/2025
 % -------------------------------------------------
 
 % Extract parameter values
@@ -73,7 +145,7 @@ x3_traj = Y(:,3);
 x4_traj = Y(:,4);
 x5_traj = Y(:,5);
 
-n_bin = 200; % grid resolution
+n_bin = 2000; % grid resolution
 xlow = []; xhigh = []; ylow = []; yhigh = [];
 
 %% CASE A: S_G vs S_B
@@ -138,8 +210,8 @@ elseif strcmp(option,'C')
     xnull_lab = '$N_{I_B}$';
     ynull_lab = '$N_{V}$';
 
-    x_traj = x3_traj(2000:end);
-    y_traj = x4_traj(2000:end);
+    x_traj = x3_traj(1:end);
+    y_traj = x4_traj(1:end);
 
     X_SS = x3_ss; % Steady State XCoord 
     Y_SS = x4_ss; % ...          YCoord
@@ -156,7 +228,7 @@ elseif strcmp(option,'C')
     x_null = ones(1, n_bin) * ...
         (gam + epsilon * (x1_ss + ig_ss) - chi_hat * x2_ss) / ...
         ((1 - delta) * chi); % V = rhs
-    y_null = (x5_ss * x1_ss) ./ ((1 - delta) * chi * x_array); % V = rhs
+    y_null = (x5_ss * x1_ss) ./ ((1 - delta) * chi * y_array); % V = rhs
 
 end
 
@@ -168,6 +240,7 @@ plot(y_null, y_array, 'k-.', 'LineWidth', 1.5, 'DisplayName', ynull_lab);
 %scatter(X_SS, Y_SS, 70, 'ko', 'filled', 'DisplayName', 'Steady State');
 xlabel(xlab, 'Interpreter', 'latex');
 ylabel(ylab, 'Interpreter', 'latex');
+xlim([0 1]); ylim([0 1]);
 legend('Interpreter','latex','Location','best');
 title([strcat('Phase Portrait with Nullclines (', xlab, ' vs ', ylab, ')')]);
 grid on;
