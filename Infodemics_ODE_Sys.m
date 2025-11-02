@@ -1,7 +1,9 @@
 %% System of Differential Equations and Time Trajectories
 % This script solves and plots the trajectories of a 5D system with given parameters
 
-clear; close all; clc;
+%clear; 
+%close all; 
+clc;
 
 %% Parameters
 gam     = 0.07;
@@ -16,6 +18,8 @@ s       = 1;
 params.gam = gam; params.chi = chi; params.chi_bar = chi_bar; params.chi_hat = chi_hat; 
 params.epsilon = epsilon; params.mu = mu; params.r = r; params.s = s;
 
+params_default = params; % Refer back to it for later reference.
+
 %% Initial Conditions
 sg0  = 0.15;
 sb0  = 0.45;
@@ -24,11 +28,50 @@ v0   = 0.15;
 phi0 = 1e-3;
 y0   = [sg0 sb0 ib0 v0 phi0];
 
+% Fig 2: 
+params = params_default;
+params.mu = 1e-6; % Case: Fig 2
+sg0 = 0.15; sb0 = 0.375; ib0 = 0.08; v0 = 0.12; phi0 = 0.4;
+y0 = [sg0, sb0, ib0, v0, phi0];
+
+
 default_dfe_ics = [ 0.175, 0.375, 0.09, 0.125, 0.4 ]; % mu = 1e-6
 default_sf_ics = [ 0.125, 0.4, 0.11, 0.25, 0.1 ]; % mu = 0.25
 default_lc_ics = [ 0.225, 0.475, 0.085, 0.125, 0.0 ]; % mu = 0.066
+default_r_bp_ss = [ 0.000571591255633368, 0.189492234608488, 0.197046892184315, 0.604330828414679, 1 ];
+r_bp = 0.340219853189614; r_hopf = 1.635;
 
-y0 = default_lc_ics; params.mu = 0.066;
+NS_mu_eta_1_ss = [ 0.0591350804603277, 0.726167095677473, 0.0553507312626473, 4.44519781396271e-24, -9.88131291682493e-324 ];
+NS_mu_eta_2_ss = [0.3399, 0.5848, 0.0227, 1e-6, 1e-6];
+
+mu_NS_mu_eta_1 = 0.23795641826987;
+mu_NS_mu_eta_2 = 0.0160574291788838;
+
+eta_NS_mu_eta_1 = 0.909373165865631;
+eta_NS_mu_eta_2 = 0.372867459305354;
+
+y0 = default_lc_ics; params.mu = 0.066; % Fig 2 D - F
+y0 = default_r_bp_ss - rand(1, 5) * 1e-4; params.r = r_bp; params.mu = 0.066;
+y0(5) = 1 - rand(1) * 0.01;
+y0 = NS_mu_eta_2_ss + rand(1, 5) * 0.01;
+params.r = r_hopf; params.mu = mu_NS_mu_eta_2; params.epsilon = eta_NS_mu_eta_2;
+
+params.r = r_hopf; params.mu = 0.066; params.epsilon = 0.4438; % Fig 3 (D - F)
+y0 = default_r_bp_ss - rand(1,5) * 1e-4;
+
+params.r = 0.0908; params.mu = 0.066; params.epsilon = 0.9033; % Fig 3 (G - I)
+y0 = default_lc_ics; y0(5) = 0.1 * rand(1);
+y0 = [0.08, 0.34, 0.01, 0.56, 1e-3];
+
+% Fig 4
+yss = [ 0.268285493772041, 0.542117940114749, 0.0621740664232601, -4.41299032491125e-28, 4.43879638444343e-30 ];
+yss = [ 0.311120209501733, 0.550549723309263, 0.0442884657076239, -1.05780180778874e-26, -1.13729280495796e-29 ];
+y0 = yss - rand(1, 5) * 0.01;
+%y0 = [0.4, 0.55, 0.001, 0.001, 1e-5];
+y0(4) = 0.01 * rand(1); y0(5) = 0.001 * rand(1);
+params.r = 1.635; params.mu = 0.0300788; params.epsilon = 0.33;
+
+
 
 %% Function for the system of ODEs
 f = @(t,y) systemODE(t,y,params);
