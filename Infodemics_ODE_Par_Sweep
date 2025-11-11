@@ -1,0 +1,181 @@
+%% Parameter Sweep for Time Trajectories
+% This code integrates a system of ODEs for different parameter values
+% and plots the time trajectories of state variables and auxiliary functions.
+% ------------------------------------------------------
+
+clear; clc; close all;
+
+%% Define time span and initial conditions
+tspan = [0 10000];
+y0 = [0.7; 0.05; 0.05; 0.15; 0.01];  % example initial conditions for 5 state variables
+
+%% Parameter sweep setup
+param_name = 'r';              % parameter to sweep - r, mu
+param_values_mu = linspace(0.05, 0.5, 4);  % values to test
+param_values_r = linspace(0.4, 2, 4);
+param_values = param_values_r;
+
+%% Fixed parameters
+epsilon = 0.33; pars.epsilon = epsilon;
+mu = 0.10; pars.mu = mu;
+chi_hat = 0.37; pars.chi_hat = chi_hat; 
+chi = 0.048; pars.chi = chi;
+chi_bar = 0.0048; pars.chi_bar = chi_bar;
+gam = 0.07; pars.gam = gam;
+delta = 0.90; pars.delta = delta;
+r = 1.635; pars.r = r;
+s = 1; pars.s = s;
+f = 0; pars.f = f;
+
+%% Preallocate storage
+all_results = struct();
+
+%% Parameter Sweep Loop
+for i = 1:length(param_values)
+    p0 = param_values(i);  % update swept parameter
+    fprintf('Running simulation for %s = %.3f\n', param_name, p0);
+    pars.(param_name) = p0;
+
+    % Define ODE system with current parameter
+    ode_fun = @(t, y) infodemics_siv_rhs(t, y, pars);
+
+    % Integrate system
+    [t_sol, y_sol] = ode45(ode_fun, tspan, y0);
+
+    % Store results
+    all_results(i).param = p0;
+    all_results(i).t = t_sol;
+    all_results(i).y = y_sol;
+end
+
+%% Plot Time Trajectories for State Variables
+figure;
+hold on;
+n = length(param_values);
+
+% Split into two halves
+half = floor(n/2);
+
+% Blue → Black
+blue2black = [linspace(0,0,half)', linspace(0,0,half)', linspace(1,0,half)'];
+
+% Black → Red
+black2red  = [linspace(0,1,n-half)', linspace(0,0,n-half)', linspace(0,0,n-half)'];
+
+% Combine
+cols = [blue2black; black2red];
+
+for i = 1:length(param_values)
+    plot(all_results(i).t, all_results(i).y(:,1), 'Color', cols(i,:), 'LineWidth', 1.5, ...
+         'DisplayName', sprintf('%s = %.2f', param_name, all_results(i).param));
+end
+
+colormap(cols);
+cb = colorbar;
+cb.Label.String = sprintf('%s', param_name);
+cb.Ticks = linspace(0,1,5);
+cb.TickLabels = arrayfun(@(x) sprintf('%.2f', x), ...
+                         linspace(min(param_values), max(param_values), 5), ...
+                         'UniformOutput', false);
+xlabel('Time');
+ylabel('State Variable y_1'); 
+legend off;
+grid on;
+
+%% Optional: Plot all state variables
+figure;
+for j = 1:size(y0,1)
+    subplot(size(y0,1),1,j);
+    hold on;
+    for i = 1:length(param_values)
+        plot(all_results(i).t, all_results(i).y(:,j), 'Color', cols(i,:), 'LineWidth', 1.2);
+    end
+    ylabel(sprintf('y_%d', j));
+    if j == 1
+        title(sprintf('Parameter Sweep: %s', param_name));
+    end
+    if j == size(y0,1)
+        xlabel('Time');
+    end
+    grid on;
+end
+
+%% Optional: Compute and Plot Auxiliary Functions
+figure;
+for i = 1:length(param_values)
+    y_sol = all_results(i).y;
+    % Auxillary Functions: G, B, I, and V
+    B = y_sol(:, 2) + y_sol(:, 3);
+    V = y_sol(:, 4); 
+    G = 1 - B - V;
+    I = 1 - y_sol(:, 1) - y_sol(:, 2) - y_sol(:, 4);
+    aux = V; % Choose: B, G, I, V
+    plot(all_results(i).t, aux, 'Color', cols(i,:), 'LineWidth', 1.5, ...
+         'DisplayName', sprintf('%s = %.2f', param_name, all_results(i).param));
+    hold on;
+end
+
+colormap(cols);
+cb = colorbar;
+cb.Label.String = param_name;
+cb.Ticks = linspace(0,1,5);
+cb.TickLabels = arrayfun(@(x) sprintf('%.2f', x), ...
+                         linspace(min(param_values), max(param_values), 5), ...
+                         'UniformOutput', false);
+
+xlabel('Time (Days)'); 
+ylabel('Auxiliary Function'); ylim([0 1]);
+legend off;
+grid on;
+
+figure; 
+for i = 1:length(param_values)
+    % Integrate the system of differential equations:
+    y_sol = all_results(i).y; % unpack the structure
+    B = y_sol(:, 2) + y_sol(:, 3);
+    V = y_sol(:, 4);
+    G = 1 - B - V;
+    I = 1 - y_sol(:, 1) - y_sol(:, 2) - y_sol(:, 4);
+    aux_x = G; % B or G
+    aux_y = V; % I or V
+    plot(aux_x, aux_y, 'Color', cols(i,:), 'LineWidth', 1.5, ...
+         'DisplayName', sprintf('%s = %.2f', param_name, all_results(i).param));
+    hold on;
+    
+end
+
+colormap(cols);
+cb = colorbar;
+cb.Label.String = param_name;
+cb.Ticks = linspace(0,1,5);
+cb.TickLabels = arrayfun(@(x) sprintf('%.2f', x), ...
+                         linspace(min(param_values), max(param_values), 5), ...
+                         'UniformOutput', false);
+
+xlabel('X'); xlim([0 1]);
+ylabel('Y'); ylim([0 1]);
+legend off;
+grid on;
+
+%% --------------------------------------------------------
+%% Define System of Differential Equations (Example)
+function dydt = infodemics_siv_rhs(t, y, pars)
+    % Unpack state variables and parameters:
+    sg = y(1); sb = y(2); ib = y(3); v = y(4); phi = y(5);
+
+    epsilon = pars.epsilon; mu = pars.mu; chi_hat = pars.chi_hat; 
+    chi = pars.chi; chi_bar = pars.chi_bar; gam = pars.gam;
+    delta = pars.delta; r = pars.r; s = pars.s; f = pars.f;
+    dydt = zeros(5,1);
+
+    % Example equations (illustrative only)
+    ig = 1 - (sg + sb + ib + v);
+
+    sgp  = gam*ig - phi*sg - chi*ib*sg - mu*sg*(sb + ib);
+    sbp  = gam*ib + mu*sg*(sb + ib) - chi_hat*ib*sb;
+    ibp  = ib*(-gam + chi_hat*sb + chi_bar*v - epsilon*(sg + ig));
+    vp   = phi*sg - chi_bar*ib*v;
+    phip = s*phi*(1 - phi)*(ig + ib - r*v);
+
+    dydt = [sgp; sbp; ibp; vp; phip];
+end
